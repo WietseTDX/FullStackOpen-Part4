@@ -1,4 +1,5 @@
 const logger = require("./logger");
+const jwt = require("jsonwebtoken");
 
 const requestLogger = (request, response, next) => {
   logger.info("Method:", request.method);
@@ -23,19 +24,44 @@ const errorHandler = (error, request, response, next) => {
     return response.status(error.status).json({ error: error.message });
   } else if (error.name === "MongoServerError" && error.message.includes("E11000 duplicate key error")) {
     return response.status(400).json({ error: "expected `username` to be unique" });
-  } else if (error.name ===  "JsonWebTokenError") {
+  } else if (error.name === "JsonWebTokenError") {
     return response.status(401).json({ error: "token invalid" });
   } else if (error.name === "TokenExpiredError") {
     return response.status(401).json({
       error: "token expired",
     });
+  } else if (error.name === "Password not valid") {
+    return response.status(error.status).json({ error: error.message });
   }
 
   next(error);
+};
+
+const tokenExtractor = (request, response, next) => {
+  const authorization = request.get("authorization");
+  if (authorization && authorization.startsWith("Bearer ")) {
+    request.token = authorization.replace("Bearer ", "");
+  } else {
+    request.token = null;
+  }
+  logger.info(`tokenExtractor. Is request.token null: ${request.token === null}`);
+  next();
+};
+
+const userExtractor = (request, response, next) => {
+  try {
+    request.user = jwt.verify(request.token, process.env.SECRET);
+  } catch {
+    request.user = null;
+  }
+  logger.info(`userExtractor. Is request.user null: ${request.user === null}`);
+  next();
 };
 
 module.exports = {
   requestLogger,
   unknownEndpoint,
   errorHandler,
+  tokenExtractor,
+  userExtractor,
 };

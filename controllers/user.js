@@ -7,8 +7,15 @@ userRouter.get("/", async (request, response) => {
   response.json(userResponse);
 });
 
-userRouter.post("/", async (request, response) => {
+userRouter.post("/", async (request, response, next) => {
   const { username, name, password } = request.body;
+  const minPasswordLength = 3;
+  if (password.length < minPasswordLength) {
+    const error = new Error(`Password is too short, (${minPasswordLength})`);
+    error.name = "Password not valid";
+    error.status = 401;
+    next(error);
+  }
   const passwordHash = await argon2.hash(password);
 
 
@@ -19,7 +26,7 @@ userRouter.post("/", async (request, response) => {
   });
 
   const savedUser = await user.save();
-  response.status(201).json(savedUser);
+  return response.status(201).json(savedUser);
 });
 
 userRouter.get("/:id", async (request, response, next) => {

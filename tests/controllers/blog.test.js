@@ -28,41 +28,62 @@ describe("GET request from database, content type json", () => {
   });
 });
 
-describe("Blog can be posted to API", () => {
+describe("A full blog post to API", () => {
+  let TOKEN = null;
+  // eslint-disable-next-line no-unused-vars
+  let USERID = null;
   before(async () => {
     await Blog.deleteMany({});
+    await helper.deleteTestUser();
+    [TOKEN, USERID] = await helper.addTestUserGetToken();
   });
 
   const payload = helper.getSingleBlog();
 
-  test("POST blog as json to database", async () => {
+  test("POST blog as json to database with token", async () => {
     const response = await api
       .post("/api/blogs")
       .send(payload)
       .set("Content-Type", "application/json")
       .set("Accept", "application/json")
+      .set("Authorization", `Bearer ${TOKEN}`)
       .expect(201)
       .expect("Content-Type", /application\/json/);
     const responseBody = response._body;
-    assert.deepStrictEqual(Object.keys(responseBody).includes("id"), true);
+
+    const DbData = (await helper.getAllDbData())[0];  // get first element as there should only be one
+    DbData.user = DbData.user.toString();   // change user id to string for comparison
+
+    assert.deepStrictEqual(responseBody, DbData, "Data in Db does not match the response");
+
+    assert.deepStrictEqual(Object.keys(responseBody).includes("id"), true, "Missing id key");
+    assert.deepStrictEqual(Object.keys(responseBody).includes("user"), true, "Missing user key");
     delete responseBody.id;   // remove id variable to match inital payload
-    assert.deepStrictEqual(responseBody, payload);
+    delete responseBody.user; // remove user variable to match inital payload
+    assert.deepStrictEqual(responseBody, payload, "Response body does not match with payload");
+
   });
 
-  test("Verify POST request data is present in database", async () => {
-    const arrayResponseBody = await helper.getAllDbData();
-    assert(arrayResponseBody.length > 0);
-    const responseBody = arrayResponseBody[0];
-
-    assert(Object.keys(responseBody).includes("id"));
-    delete responseBody.id;   // remove id variable to match inital payload
-    assert.deepStrictEqual(responseBody, payload);
+  test("POST blog as json to database without token", async () => {
+    const response = await api
+      .post("/api/blogs")
+      .send(payload)
+      .set("Content-Type", "application/json")
+      .set("Accept", "application/json")
+      .expect(401)
+      .expect("Content-Type", /application\/json/);
+    assert.strictEqual(JSON.parse(response.text).error, "token invalid");
   });
 });
 
 describe("Verify likes property default to 0 when not provided", () => {
+  let TOKEN = null;
+  // eslint-disable-next-line no-unused-vars
+  let USERID = null;
   before(async () => {
     await Blog.deleteMany({});
+    await helper.deleteTestUser();
+    [TOKEN, USERID] = await helper.addTestUserGetToken();
   });
 
   const payload = helper.getSingleBlog();
@@ -74,6 +95,7 @@ describe("Verify likes property default to 0 when not provided", () => {
       .send(payload)
       .set("Content-Type", "application/json")
       .set("Accept", "application/json")
+      .set("Authorization", `Bearer ${TOKEN}`)
       .expect(201)
       .expect("Content-Type", /application\/json/);
     const responseBody = response._body;
@@ -92,6 +114,14 @@ describe("Verify likes property default to 0 when not provided", () => {
 });
 
 describe("POST new blogs without required fields, verify code 400 and no data added", () => {
+  let TOKEN = null;
+  // eslint-disable-next-line no-unused-vars
+  let USERID = null;
+  before(async () => {
+    await helper.deleteTestUser();
+    [TOKEN, USERID] = await helper.addTestUserGetToken();
+  });
+
   beforeEach(async () => {
     await Blog.deleteMany({});
   });
@@ -102,6 +132,7 @@ describe("POST new blogs without required fields, verify code 400 and no data ad
       .send(payload)
       .set("Content-Type", "application/json")
       .set("Accept", "application/json")
+      .set("Authorization", `Bearer ${TOKEN}`)
       .expect(400)
       .expect("Content-Type", /application\/json/);
 
@@ -137,17 +168,26 @@ describe("POST new blogs without required fields, verify code 400 and no data ad
 });
 
 describe("DELETE blog by id and verify its removal", async () => {
+  let TOKEN = null;
+  let USERID = null;
+  before(async () => {
+    await helper.deleteTestUser();
+    [TOKEN, USERID] = await helper.addTestUserGetToken();
+  });
+
   let blogInDb = {};
   const payload = helper.getSingleBlog();
   beforeEach(async () => {
     await Blog.deleteMany({});
-    blogInDb = await helper.addBlogToDb(payload);
+    blogInDb = await helper.addBlogToDb(payload, USERID);
+    blogInDb.user = blogInDb.user.toString();     // change id object to string for future comparison
     assert(Object.keys(blogInDb).length > 0, "The database write has failed this describe will fail");
   });
 
   test("Delete a blog entry on id", async () => {
     const response = await api
       .delete(`/api/blogs/${blogInDb.id}`)
+      .set("Authorization", `Bearer ${TOKEN}`)
       .expect(200)
       .expect("Content-Type", /application\/json/);
 
@@ -159,6 +199,7 @@ describe("DELETE blog by id and verify its removal", async () => {
     // eslint-disable-next-line no-unused-vars
     const response = await api
       .delete(`/api/blogs/${blogInDb.id.slice(0, -8)}XXXXXXXX`)
+      .set("Authorization", `Bearer ${TOKEN}`)
       .expect(400)
       .expect("Content-Type", /application\/json/);
     assert.deepStrictEqual((await helper.getAllDbData()).length, 1, "The data was deleted with a wrong id, there should be a record still in the database");

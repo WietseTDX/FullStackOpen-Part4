@@ -1,6 +1,6 @@
 const User = require("../../models/user");
 
-const multipleBlogs = [
+const multipleUser = [
   {
     "username": "Fake name",
     "name": "Real name",
@@ -14,17 +14,17 @@ const multipleBlogs = [
 ];
 
 const getMultipleUser = () => {
-  return [...multipleBlogs];
+  return [...multipleUser];
 };
 
-const singleBlog = {
+const singleUser = {
   "username": "Henk",
   "name": "Steen",
   "password": "Passcard",
 };
 
 const getSingleUser = () => {
-  return JSON.parse(JSON.stringify(singleBlog));
+  return JSON.parse(JSON.stringify(singleUser));
 };
 
 const getAllDbData = async () => {

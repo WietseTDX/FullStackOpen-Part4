@@ -21,7 +21,7 @@ describe("when there is initially one user in db", () => {
     await user.save();
   });
 
-  test("creation succeeds with a fresh username", async () => {
+  test("creation succeeds with a unique username", async () => {
     const usersAtStart = await helper.getAllDbData();
 
     const newUser = {
@@ -40,7 +40,8 @@ describe("when there is initially one user in db", () => {
     assert.strictEqual(usersAtEnd.length, usersAtStart.length + 1);
 
     const usernames = usersAtEnd.map(u => u.username);
-    assert(usernames.includes(newUser.username));
+    assert(usernames.includes(newUser.username), "The post api call failed the save the db data");
+    assert(usernames.includes(helper.getSingleUser().username), "The default added user for the test is not present in db");
   });
 
   test("creation fails with proper statuscode and message if username already taken", async () => {

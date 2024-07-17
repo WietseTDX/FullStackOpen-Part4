@@ -1,8 +1,6 @@
-const jwt = require("jsonwebtoken");
 const blogRouter = require("express").Router();
 const Blog = require("../models/blog");
 const User = require("../models/user");
-const authHelper = require("../utils/auth");
 
 blogRouter.get("/", async (request, response) => {
   const blogResponse = await Blog.find({}).populate("user", { "username": 1, "name": 1 });
@@ -11,11 +9,10 @@ blogRouter.get("/", async (request, response) => {
 
 blogRouter.post("/", async (request, response) => {
   const { title, author, url, likes } = request.body;
-  const decodedToken = jwt.verify(authHelper.getTokenFrom(request), process.env.SECRET);
-  if (!decodedToken.id) {
+  if (request.user === null) {
     return response.status(401).json({ error: "token invalid" });
   }
-  const user = await User.findById(decodedToken.id);
+  const user = await User.findById(request.user.id);
 
   const blog = new Blog({
     title,
@@ -34,9 +31,9 @@ blogRouter.post("/", async (request, response) => {
 });
 
 blogRouter.get("/:id", async (request, response, next) => {
-  const blogId = await Blog.findById(request.params.id);
-  if (blogId) {
-    response.status(200).json(blogId);
+  const blog = await Blog.findById(request.params.id);
+  if (blog) {
+    response.status(200).json(blog);
   } else {
     const error = new Error("Blog does not exsist");
     error.name = "Key not in DB";
@@ -46,6 +43,11 @@ blogRouter.get("/:id", async (request, response, next) => {
 });
 
 blogRouter.delete("/:id", async (request, response, next) => {
+  const user = await User.findById((await Blog.findById(request.params.id)).user);
+  if (user.id !== request.user.id) {
+    return response.status(401).json({ error: "Invalid user" });
+  }
+
   const deletedBlog = await Blog.findByIdAndDelete(request.params.id);
   if (deletedBlog) {
     response.status(200).json(deletedBlog);
