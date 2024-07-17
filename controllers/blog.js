@@ -50,7 +50,7 @@ blogRouter.delete("/:id", async (request, response, next) => {
 
   const deletedBlog = await Blog.findByIdAndDelete(request.params.id);
   if (deletedBlog) {
-    response.status(200).json(deletedBlog);
+    response.status(204).end();
   } else {
     const error = new Error("Blog does not exsist");
     error.name = "Key not in DB";

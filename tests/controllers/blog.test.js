@@ -185,13 +185,11 @@ describe("DELETE blog by id and verify its removal", async () => {
   });
 
   test("Delete a blog entry on id", async () => {
-    const response = await api
+    await api
       .delete(`/api/blogs/${blogInDb.id}`)
       .set("Authorization", `Bearer ${TOKEN}`)
-      .expect(200)
-      .expect("Content-Type", /application\/json/);
+      .expect(204);
 
-    assert.deepStrictEqual(response.body, blogInDb, "The deleted data does not match with the written data to the database");
     assert.deepStrictEqual((await helper.getAllDbData()).length, 0, "The data was not correctly deleted, there are still records in the database");
   });
 

@@ -44,7 +44,7 @@ userRouter.get("/:id", async (request, response, next) => {
 userRouter.delete("/:id", async (request, response, next) => {
   const deletedUser = await User.findByIdAndDelete(request.params.id);
   if (deletedUser) {
-    response.status(200).json(deletedUser);
+    response.status(204).end();
   } else {
     const error = new Error("User does not exsist");
     error.name = "Key not in DB";
